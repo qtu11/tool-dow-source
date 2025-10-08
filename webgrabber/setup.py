@@ -1,0 +1,28 @@
+# webgrabber/setup.py
+
+from setuptools import setup, find_packages
+
+setup(
+    name='webgrabber',
+    version='0.5.0',
+    packages=find_packages(),
+    install_requires=[
+        'click>=8.1.0',
+        'playwright>=1.40.0',
+        'aiohttp>=3.9.0',
+        'requests>=2.31.0',
+        'beautifulsoup4>=4.12.0',
+        'cssutils>=2.7.0',
+        'tenacity>=8.2.0',
+        'lupa>=2.0.0',
+        'pybind11>=2.11.0',
+        'pygit2>=1.13.0',
+        'pyjnius>=1.6.0',
+        'sourcemap>=0.2.1',
+    ],
+    entry_points={
+        'console_scripts': [
+            'webgrabber = webgrabber.cli.commands:main',
+        ],
+    },
+)

@@ -1,0 +1,2 @@
+[console_scripts]
+webgrabber = webgrabber.cli.commands:main

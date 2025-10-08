@@ -1,0 +1,26 @@
+{
+    "git_strategy": {
+        "branch": "main"
+    },
+    "ssh_strategy": {
+        "user": "root",
+        "host": "example.com",
+        "port": 22,
+        "remote_path": "/var/www/html",
+        "private_key_path": "",
+        "exclude": [
+            "node_modules/",
+            ".git/",
+            "*.log",
+            "cache/"
+        ]
+    },
+    "paas_strategy": {
+        "heroku": {
+            "app_name": ""
+        }
+    },
+    "general": {
+        "proxy": ""
+    }
+}

@@ -1,0 +1,18 @@
+{
+    "git": {
+        "branch": "",
+        "depth": 1
+    },
+    "ssh": {
+        "exclude": [
+            ".git",
+            "*.log",
+            "*.tmp"
+        ]
+    },
+    "paas": {
+        "heroku": {
+            "team": ""
+        }
+    }
+}
