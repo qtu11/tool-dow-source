@@ -208,9 +208,10 @@ class PaasStrategy:
         git_strategy = GitStrategy(
             url=repo_url,
             output_dir=self.output_dir,
-            config=self.config,
+            config={'git_strategy': self.config},  # Wrap in parent config format
+            session_manager=self.session_manager,
             log_callback=self.log_callback,
-            token_callback=self.token_callback, # Pass token callback for private repos
+            token_callback=self.token_callback,
             cancel_event=self.cancel_event
         )
         return await git_strategy.download()

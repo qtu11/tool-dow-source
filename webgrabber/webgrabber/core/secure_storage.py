@@ -23,8 +23,11 @@ class SecureTokenStorage:
             key = Fernet.generate_key()
             with open(self.key_file, 'wb') as f:
                 f.write(key)
-            # Set restrictive permissions
-            os.chmod(self.key_file, 0o600)
+            # Set restrictive permissions (skip on Windows)
+            try:
+                os.chmod(self.key_file, 0o600)
+            except OSError:
+                pass  # Windows doesn't support Unix-style permissions
             log_audit("Generated new encryption key for token storage")
         
     def _get_cipher(self):
@@ -40,10 +43,11 @@ class SecureTokenStorage:
             tokens = self._load_tokens()
             
             # Add/update token
+            from datetime import datetime
             tokens[platform] = {
                 'token': token,
                 'metadata': metadata or {},
-                'created_at': str(Path().stat().st_mtime if Path().exists() else 0)
+                'created_at': datetime.now().isoformat()
             }
             
             # Encrypt and save
@@ -53,8 +57,11 @@ class SecureTokenStorage:
             with open(self.storage_file, 'wb') as f:
                 f.write(encrypted_data)
             
-            # Set restrictive permissions
-            os.chmod(self.storage_file, 0o600)
+            # Set restrictive permissions (skip on Windows)
+            try:
+                os.chmod(self.storage_file, 0o600)
+            except OSError:
+                pass  # Windows doesn't support Unix-style permissions
             log_audit(f"Securely saved token for platform: {platform}")
             return True
             
@@ -138,33 +145,3 @@ class SecureTokenStorage:
         # Default validation - at least 10 characters
         return len(token) >= 10
     
-    def migrate_from_old_format(self, old_tokens_file="tokens.py"):
-        """Migrate tokens from old plain text format"""
-        if not Path(old_tokens_file).exists():
-            return False
-        
-        try:
-            import importlib.util
-            spec = importlib.util.spec_from_file_location("old_tokens", old_tokens_file)
-            old_tokens = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(old_tokens)
-            
-            migrated_count = 0
-            for attr_name in dir(old_tokens):
-                if attr_name.endswith('_TOKEN') and not attr_name.startswith('_'):
-                    platform = attr_name.replace('_TOKEN', '').lower()
-                    token = getattr(old_tokens, attr_name)
-                    if token and isinstance(token, str):
-                        self.save_token(platform, token, {'migrated': True})
-                        migrated_count += 1
-            
-            if migrated_count > 0:
-                log_audit(f"Migrated {migrated_count} tokens from old format")
-                # Backup old file
-                os.rename(old_tokens_file, f"{old_tokens_file}.backup")
-            
-            return migrated_count > 0
-            
-        except Exception as e:
-            log_audit(f"Error migrating tokens: {e}")
-            return False

@@ -35,8 +35,14 @@ class ConfigManager:
                     "app_name": ""
                 }
             },
+            "website_strategy": {
+                "max_pages": 50,
+                "scroll_for_lazy_load": True,
+                "extract_source_maps": True
+            },
             "general": {
-                "proxy": ""
+                "proxy": "",
+                "generate_report": True
             }
         }
 
@@ -58,6 +64,11 @@ class ConfigManager:
     def get_config(self):
         """Returns the current in-memory configuration."""
         return self.config
+
+    def set_value(self, key: str, value):
+        """Sets a single top-level key in the configuration and saves."""
+        self.config[key] = value
+        self.save_config(self.config)
 
     def save_config(self, new_config: dict):
         """Saves the provided configuration to the config.json file."""

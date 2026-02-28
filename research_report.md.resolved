@@ -1,0 +1,160 @@
+# 🔬 Nghiên Cứu Sâu V2 — Đề Xuất Phát Triển WebGrabber
+
+## Trạng Thái Hiện Tại (sau nâng cấp)
+
+```mermaid
+graph TD
+    subgraph "✅ Đã Có"
+        A["Network Interception"]
+        B["Source Map Extraction"]
+        C["Path Rewriting (offline)"]
+        D["Git Clone Strategy"]
+        E["PaaS API (Vercel/Netlify/Heroku/Render)"]
+        F["SSH Strategy"]
+        G["Multi-page Crawl"]
+        H["Tkinter GUI + CLI"]
+    end
+
+    subgraph "❌ Chưa Có"
+        I["Anti-Bot Bypass"]
+        J["Framework Detection"]
+        K["Local Preview Server"]
+        L["GitHub/GitLab API Download"]
+        M["Smart Retry System"]
+        N["Incremental Download"]
+        O["SPA Deep Rendering"]
+    end
+```
+
+---
+
+## 🔴 7 Hạn Chế Cần Khắc Phục
+
+### 1. Không bypass Anti-Bot Detection
+
+Nhiều website dùng Cloudflare, reCAPTCHA, Akamai → Playwright bị block. Tool thiếu:
+- Stealth mode (fingerprint randomization)
+- Challenge solving
+- Human-like behavior simulation
+
+### 2. Git Strategy thiếu API download
+
+[git_strategy.py](file:///c:/Users/kirit/Downloads/tool-dow-code/webgrabber/webgrabber/strategies/git_strategy.py) chỉ dùng `pygit2.clone_repository` — **yêu cầu git credentials cho private repos**. Thiếu:
+- GitHub REST API download (archive tar.gz — không cần git)
+- GitLab API download
+- Bitbucket API download
+- Download specific branch/tag/commit
+
+### 3. Không detect framework → không tối ưu download
+
+Tool download "mù" — không biết website dùng Next.js, Nuxt, Angular → không biết:
+- Where source files actually are
+- How to reconstruct project structure
+- What build artifacts to skip vs keep
+
+### 4. Source code download không chạy thử được ngay
+
+Thiếu **local preview server** — user phải tự setup server. Cần:
+- Built-in HTTP server (Python http.server hoặc tốt hơn)
+- Auto-open browser
+- CORS proxy cho API calls
+
+### 5. PaaS Strategy có bug khi Render delegate sang GitStrategy
+
+[paas_strategy.py:208](file:///c:/Users/kirit/Downloads/tool-dow-code/webgrabber/webgrabber/strategies/paas_strategy.py#L206-L216) — tạo [GitStrategy](file:///c:/Users/kirit/Downloads/tool-dow-code/webgrabber/webgrabber/strategies/git_strategy.py#14-75) thiếu `session_manager`:
+
+```python
+# BUG: thiếu session_manager khi tạo GitStrategy
+git_strategy = GitStrategy(
+    url=repo_url,
+    output_dir=self.output_dir,
+    config=self.config,  # ← WRONG: self.config đã là paas_strategy config
+    log_callback=self.log_callback,
+    token_callback=self.token_callback,
+    cancel_event=self.cancel_event
+    # ← MISSING: session_manager
+)
+```
+
+### 6. Không có retry system
+
+Download thất bại = mất hết. Tool có [retry_failed_enhanced.py](file:///c:/Users/kirit/Downloads/tool-dow-code/webgrabber/webgrabber/tools/retry_failed_enhanced.py) nhưng **không được tích hợp** vào pipeline.
+
+### 7. Download lại = download toàn bộ lại
+
+Không có incremental/diff download — mỗi lần chạy lại download 100% files dù chỉ thay đổi 1%.
+
+---
+
+## 🚀 Đề Xuất 12 Module Mới — Lộ Trình 3 Phase
+
+### Phase A: Core Power _(code ngay)_
+
+| # | Module | File | Mô tả |
+|---|--------|------|--------|
+| A1 | **Stealth Browser** | `crawler/stealth.py` | Anti-detection: random fingerprint, human sim, Cloudflare bypass |
+| A2 | **GitHub API Strategy** | `strategies/github_api_strategy.py` | Download qua REST API — không cần git, hỗ trợ private repos |
+| A3 | **Framework Detector** | `core/framework_detector.py` | Detect React/Vue/Angular/Next/Nuxt từ HTML + JS patterns |
+| A4 | **Local Preview Server** | `core/preview_server.py` | Built-in HTTP server + auto-open browser |
+| A5 | **Smart Retry** | Tích hợp vào [resource_collector.py](file:///c:/Users/kirit/Downloads/tool-dow-code/webgrabber/webgrabber/crawler/resource_collector.py) | Auto-retry failed downloads với backoff |
+
+---
+
+### Phase B: Intelligence _(nâng cao)_
+
+| # | Module | File | Mô tả |
+|---|--------|------|--------|
+| B1 | **API Interceptor** | `crawler/api_interceptor.py` | Bắt XHR/fetch calls → lưu API endpoints + responses |
+| B2 | **Project Reconstructor** | `output/project_reconstructor.py` | Tạo `package.json`, serve config từ detected framework |
+| B3 | **Incremental Download** | `core/download_cache.py` | Hash-based cache, chỉ download files thay đổi |
+| B4 | **SPA Router Crawler** | Tích hợp vào collector | Phát hiện React Router/Vue Router routes → crawl tất cả |
+
+---
+
+### Phase C: Professional _(mở rộng)_
+
+| # | Module | File | Mô tả |
+|---|--------|------|--------|
+| C1 | **Multi-URL Batch** | `core/batch_processor.py` | Download nhiều URL cùng lúc |
+| C2 | **Download History** | `core/history_db.py` | SQLite lưu lịch sử, diff giữa các lần |
+| C3 | **Export Formats** | `output/exporter.py` | Export ZIP, Docker image, Git repo |
+
+---
+
+## 📐 Kiến Trúc Đề Xuất Sau Phase A
+
+```mermaid
+graph TD
+    subgraph "Input"
+        URL["URL"] --> FD["FrameworkDetector"]
+        URL --> PD["PlatformDetector"]
+    end
+
+    subgraph "Strategy Selection"
+        PD --> |"github.com"| GH["GitHubAPIStrategy (NEW)"]
+        PD --> |"gitlab.com"| GL["GitStrategy"]
+        PD --> |"vercel.app"| PS["PaasStrategy"]
+        PD --> |"unknown"| WS["WebsiteCaptureStrategy"]
+    end
+
+    subgraph "Execution"
+        WS --> SB["StealthBrowser (NEW)"]
+        SB --> NI["Network Interception"]
+        NI --> SM["Source Map Extraction"]
+        SM --> PR["Path Rewriting"]
+        PR --> SR["Smart Retry (NEW)"]
+    end
+
+    subgraph "Output"
+        SR --> LS["Local Server (NEW)"]
+        SR --> RP["Report + File Tree"]
+        FD --> PJ["Project Reconstructor (NEW)"]
+    end
+```
+
+> [!IMPORTANT]
+> **Khuyến nghị: Code Phase A trước** (5 module) — impact cao nhất, dùng ngay được.
+> Đặc biệt **A1 (Stealth)** và **A2 (GitHub API)** giải quyết 2 pain point lớn nhất.
+
+> [!TIP]
+> **Bug cần fix ngay:** PaaS → Git delegation thiếu session_manager + config sai.

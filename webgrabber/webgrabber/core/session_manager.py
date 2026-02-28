@@ -93,7 +93,11 @@ class SessionManager:
 
     def _create_status_window(self):
         """Creates a small Tkinter window to inform the user."""
-        if not tk._get_default_root('Error in _create_status_window'):
+        try:
+            root = tk._default_root
+        except AttributeError:
+            root = None
+        if not root:
             root = tk.Tk()
             root.withdraw()
 
